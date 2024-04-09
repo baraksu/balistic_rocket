@@ -84,30 +84,23 @@ proc draw_square
     int 10h
     dec dx
     int 10h
-    
-    
+
     pop dx
     pop cx
     pop ax
     ret
 endp draw_square
              
-             
-             
-             
 start: 
  
 mov ax,@DATA
 mov ds, ax
-
  
- mov ah,0 
- mov al,13h
- int 10h ;call graphics interrupt
-
+mov ah,0 
+mov al,13h
+int 10h ;call graphics interrupt
 
 call draw_square
-
 
 ;==========================
 readkey:
