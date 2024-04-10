@@ -3,7 +3,7 @@
 
 .DATA
 
-xv db 10  ;x velocity
+vx db 10  ;x velocity
 t0sec db ? ;t0, seconds
 t0min db ? ;t0, minutes
 seconds_passed db ? ;delta t, seconds
@@ -11,6 +11,8 @@ millis db ?  ;delta t, milliseconds
 minutes_passed db 0 ;if the minute has changed, add 60 seconds before subtracting t0sec
 
 color db 15
+x0 dw 10
+y0 dw 100
 x_coordinate dw 10
 y_coordinate dw 100
 
@@ -51,7 +53,7 @@ proc get_delta_t ;puts the number of seconds passed from t0 in seconds_passed an
     cmp cl,t0min
     
     je samemin
-    add minutes_passed,60
+    mov minutes_passed,60
     
     samemin: 
     
@@ -66,7 +68,32 @@ proc get_delta_t ;puts the number of seconds passed from t0 in seconds_passed an
     pop cx
     pop ax
     ret
-endp get_delta_t  
+endp get_delta_t
+
+proc update_x_coordinate ; x(t) = x0 + vt
+    push ax
+    push cx
+    push bx
+    
+    
+    mov ax,x0
+    mov x_coordinate, ax
+    mov al,vx
+    mul seconds_passed 
+    add x_coordinate,ax
+    
+    xor ax,ax
+    mov al,vx
+    mul millis
+    mov bl,100
+    div bl
+    add x_coordinate,ax
+    
+    pop bx
+    pop cx
+    pop ax
+    ret
+endp update_x_coordinate      
 
 proc draw_square
     push ax
@@ -95,12 +122,24 @@ start:
  
 mov ax,@DATA
 mov ds, ax
- 
+
 mov ah,0 
 mov al,13h
 int 10h ;call graphics interrupt
 
+call get_t0
 call draw_square
+
+
+redraw:
+call get_delta_t
+call update_x_coordinate
+
+
+call draw_square
+jmp redraw
+
+
 
 ;==========================
 readkey:
