@@ -3,7 +3,7 @@
 
 .DATA
 
-vx db 10  ;x velocity
+vx db 30  ;x velocity
 t0sec db ? ;t0, seconds
 t0min db ? ;t0, minutes
 seconds_passed db ? ;delta t, seconds
@@ -86,7 +86,8 @@ proc update_x_coordinate ; x(t) = x0 + vt
     mov al,vx
     mul millis
     mov bl,100
-    div bl
+    div bl 
+    xor ah,ah
     add x_coordinate,ax
     
     pop bx
