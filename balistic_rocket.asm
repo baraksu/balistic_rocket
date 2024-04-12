@@ -3,13 +3,17 @@
 
 .DATA
 
-vx db 30  ;x velocity
+ 
 t0sec db ? ;t0, seconds
 t0min db ? ;t0, minutes
 seconds_passed db ? ;delta t, seconds
-millis db ?  ;delta t, milliseconds
+ms db ?  ;delta t, milliseconds
 minutes_passed db 0 ;if the minute has changed, add 60 seconds before subtracting t0sec
+t_sq dw 0 ; used to calculate t^2
 
+vx db 30 ;x velocity
+ay db 15 ;y acceleration
+v0y db 35 ; initial y velocity
 color db 15
 x0 dw 10
 y0 dw 100
@@ -42,7 +46,7 @@ proc get_t0  ;puts the currrent time in t0sec and t0min
     ret
 endp get_t0    
     
-proc get_delta_t ;puts the number of seconds passed from t0 in seconds_passed and milliseconds in millis
+proc get_delta_t ;puts the number of seconds passed from t0 in seconds_passed and milliseconds in ms
     push ax
     push cx
     push dx
@@ -62,7 +66,7 @@ proc get_delta_t ;puts the number of seconds passed from t0 in seconds_passed an
     sub al,t0sec
     
     mov seconds_passed,al
-    mov millis,dl
+    mov ms,dl
     
     pop dx
     pop cx
@@ -71,30 +75,89 @@ proc get_delta_t ;puts the number of seconds passed from t0 in seconds_passed an
 endp get_delta_t
 
 proc update_x_coordinate ; x(t) = x0 + vt
+    push dx
     push ax
-    push cx
     push bx
-    
-    
-    mov ax,x0
-    mov x_coordinate, ax
+    push cx
+  
+    mov dx,x0
     mov al,vx
     mul seconds_passed 
-    add x_coordinate,ax
+    add dx,ax
     
     xor ax,ax
     mov al,vx
-    mul millis
+    mul ms
     mov bl,100
     div bl 
     xor ah,ah
-    add x_coordinate,ax
+    add dx,ax
     
-    pop bx
     pop cx
+    pop bx
+    
+    mov bp,sp
+    mov ax,[bp + 4]
+    mov [bp + 4],dx
+    
+    xor ax,[bp + 2]
+    xor [bp + 2],ax
+    xor ax,[bp + 2]
+    
+    mov dx,ax
     pop ax
+    
     ret
-endp update_x_coordinate      
+endp update_x_coordinate   ;sp points at the updated x coordinates
+
+proc update_y_coordinate ;y(t) = y0 + v0y*t + 0.5at^2
+    push ax
+    push bx
+    push cx
+    push dx
+    
+    ; y0
+    mov dx,y0 
+    
+    ; y0t
+    mov al,v0y 
+    mul seconds_passed
+    sub dx,ax
+    
+    xor ax,ax
+    mov al,v0y
+    mul ms
+    mov bl,100
+    div bl 
+    xor ah,ah
+    sub dx,ax
+    
+    ; 0.5at^2 , t^2 = sec^2 + 2*sec*ms + ms^2
+    
+    ;sec^2
+    mov al,seconds_passed
+    mul al
+    mov t_sq,ax
+    
+    ;2*sec*ms
+    mov al,seconds_passed
+    mul ms
+    mov bl,50
+    div ax
+    xor ah,ah
+    add t_sq,ax
+    
+    ;ms^2 will be less than 1 anyway so it is pointless 
+    
+    mov ax,t_sq
+    mov bx,2
+    div bx
+    
+    
+    
+    ret
+endp update_y_coordinate    
+
 
 proc draw_square
     push ax
@@ -136,7 +199,13 @@ redraw:
 call get_delta_t
 call update_x_coordinate
 
+;erase old square
+mov color,0 
+call draw_square
 
+;draw new
+pop x_coordinate
+mov color,15
 call draw_square
 jmp redraw
 
