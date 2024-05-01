@@ -1,8 +1,11 @@
 .MODEL small
 .STACK 100h
+.DATA    
 
-.DATA
+logo db "#    ____        _ _ _     _   _        _____            _        _   ",13,10,"#   |  _ \      | | (_)   | | (_)      |  __ \          | |      | |  ",13,10,"#   | |_) | __ _| | |_ ___| |_ _  ___  | |__) |___   ___| | _____| |_ ",13,10,"#   |  _ < / _` | | | / __| __| |/ __| |  _  // _ \ / __| |/ / _ \ __|",13,10,"#   | |_) | (_| | | | \__ \ |_| | (__  | | \ \ (_) | (__|   <  __/ |_ ",13,10,"#   |____/ \__,_|_|_|_|___/\__|_|\___| |_|  \_\___/ \___|_|\_\___|\__|",13,10,"$"
 
+msg1 db 13,10,"Enter x velocity (10-99), (pixels per seconds): $"
+msg2 db 13,10,"Enter initial y velocity (10-99), (pixels per seconds): $"
  
 t0sec db ? ;t0, seconds
 t0min db ? ;t0, minutes
@@ -11,20 +14,50 @@ ms db ?  ;delta t, milliseconds
 minutes_passed db 0 ;if the minute has changed, add 60 seconds before subtracting t0sec
 t_sq dw 0 ; used to calculate t^2
 
-vx db 35 ;x velocity
-ay db 20 ;y acceleration
-v0y db 55 ; initial y velocity
+vx db 0 ;x velocity
+ay db 10 ;y acceleration
+v0y db 0 ; initial y velocity
 color db 15
 x0 dw 10
-y0 dw 150
+y0 dw 190
 x_coordinate dw 10
-y_coordinate dw 150
+y_coordinate dw 190
 
-y1 dw 150
 
 .CODE
 
-proc get_t0  ;puts the currrent time in t0sec and t0min
+proc get_velocity ; input: offset of a message and offset of where the entered input goes to. output: entered input.
+    push bp
+    mov bp,sp
+    push ax
+    push bx
+    push dx
+    
+    mov dx, [bp + 6]
+    mov ah,09h
+    int 21h
+    
+    mov ah,01h
+    int 21h
+    sub al,30h
+    mov bl,10
+    mul bl
+    mov bx,[bp + 4]
+    add [bx],al
+    
+    mov ah,01h
+    int 21h
+    sub al,30h
+    add [bx],al                
+    
+    pop dx
+    pop bx
+    pop ax
+    pop bp
+    ret
+endp get_velocity    
+
+proc get_t0 ;no input, output: the currrent time in t0sec and t0min
     push ax
     push cx
     push dx
@@ -48,7 +81,7 @@ proc get_t0  ;puts the currrent time in t0sec and t0min
     ret
 endp get_t0    
     
-proc get_delta_t ;puts the number of seconds passed from t0 in seconds_passed and milliseconds in ms
+proc get_delta_t ;input: t0 (t0sec, t0min). output: the number of seconds passed from t0 in seconds_passed and milliseconds in ms
     push ax
     push cx
     push dx
@@ -76,13 +109,13 @@ proc get_delta_t ;puts the number of seconds passed from t0 in seconds_passed an
     ret
 endp get_delta_t
 
-proc update_x_coordinate ; x(t) = x0 + vt
+proc update_x_coordinate ; input: delta t (seconds_passed, ms). output: sp points at the updated x coordinates. 
     push dx
     push ax
     push bx
     push cx
   
-    mov dx,x0
+    mov dx,x0   ;x(t) = x0 + vt
     mov al,vx
     mul seconds_passed 
     add dx,ax
@@ -110,13 +143,15 @@ proc update_x_coordinate ; x(t) = x0 + vt
     pop ax
     
     ret
-endp update_x_coordinate   ;sp points at the updated x coordinates
+endp update_x_coordinate   
 
-proc update_y_coordinate ;y(t) = y0 + v0y*t + 0.5at^2
+proc update_y_coordinate ;input: delta t (seconds_passed, ms). output: sp points at the updated y coordinates.
     
     push dx
     push ax
     push bx
+    
+    ;y(t) = y0 + v0y*t + 0.5at^2
     
     ; y0
     mov dx,y0 
@@ -173,6 +208,7 @@ proc update_y_coordinate ;y(t) = y0 + v0y*t + 0.5at^2
     ret
 endp update_y_coordinate    
 
+
 proc draw_square
     push ax
     push cx
@@ -200,6 +236,18 @@ start:
  
 mov ax,@DATA
 mov ds, ax
+
+lea dx,logo
+mov ah,09h
+int 21h
+
+push offset msg1
+push offset vx
+call get_velocity
+
+push offset msg2
+push offset v0y
+call get_velocity
 
 mov ah,0 
 mov al,13h
