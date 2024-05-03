@@ -4,8 +4,10 @@
 
 logo db "#    ____        _ _ _     _   _        _____            _        _   ",13,10,"#   |  _ \      | | (_)   | | (_)      |  __ \          | |      | |  ",13,10,"#   | |_) | __ _| | |_ ___| |_ _  ___  | |__) |___   ___| | _____| |_ ",13,10,"#   |  _ < / _` | | | / __| __| |/ __| |  _  // _ \ / __| |/ / _ \ __|",13,10,"#   | |_) | (_| | | | \__ \ |_| | (__  | | \ \ (_) | (__|   <  __/ |_ ",13,10,"#   |____/ \__,_|_|_|_|___/\__|_|\___| |_|  \_\___/ \___|_|\_\___|\__|",13,10,"$"
 
-msg1 db 13,10,"Enter x velocity (10-99), (pixels per seconds): $"
-msg2 db 13,10,"Enter initial y velocity (10-99), (pixels per seconds): $"
+msg1 db 13,10,"Enter x velocity (00-99), (pixels per seconds): $"
+msg2 db 13,10,"Enter initial y velocity (00-99), (pixels per seconds): $"
+
+msg3 db "Enter space to start again, esc to exit program.",13,10,"$"
  
 t0sec db ? ;t0, seconds
 t0min db ? ;t0, minutes
@@ -14,9 +16,9 @@ ms db ?  ;delta t, milliseconds
 minutes_passed db 0 ;if the minute has changed, add 60 seconds before subtracting t0sec
 t_sq dw 0 ; used to calculate t^2
 
-vx db 0 ;x velocity
-ay db 10 ;y acceleration
-v0y db 0 ; initial y velocity
+vx db ? ;x velocity
+ay db 15 ;y acceleration
+v0y db ? ; initial y velocity
 color db 15
 x0 dw 10
 y0 dw 190
@@ -37,13 +39,14 @@ proc get_velocity ; input: offset of a message and offset of where the entered i
     mov ah,09h
     int 21h
     
+    
     mov ah,01h
     int 21h
     sub al,30h
     mov bl,10
     mul bl
     mov bx,[bp + 4]
-    add [bx],al
+    mov [bx],al
     
     mov ah,01h
     int 21h
@@ -268,25 +271,41 @@ call draw_square
 
 ;draw new
 pop y_coordinate
-pop x_coordinate   
+pop x_coordinate
+
+cmp x_coordinate,310
+ja stopanimation   
+
+cmp y_coordinate,190
+ja stopanimation
 
 mov color,15
 call draw_square
 jmp redraw
 
+stopanimation:
+mov ax,03h
+int 10h
 
+lea dx,msg3
+mov ah,09h
+int 21h
 
-;==========================
 readkey:
- mov ah,00
- int 16h ;wait for keypress
+mov ah,00
+int 16h ;wait for keypress
+
+cmp ax,3920h
+je start
+
+cmp ax,011Bh
+je exit
+
+jmp readkey 
+ 
 ;==========================
 exit:
- mov ah,00 ;again subfunc 0
- mov al,03 ;text mode 3
- int 10h ;call int
- mov ah,04ch
- mov al,00 ;end program normally
+ mov ah,4ch
  int 21h 
 
 END Start
