@@ -7,7 +7,9 @@ logo1 db " |  _ \      | | (_)   | | (_)      |  __ \          | |      | | ",13
 logo2 db " | |_) | __ _| | |_ ___| |_ _  ___  | |__) |___   ___| | _____| |_ ",13,10
 logo3 db " |  _ < / _` | | | / __| __| |/ __| |  _  // _ \ / __| |/ / _ \ __|",13,10
 logo4 db " | |_) | (_| | | | \__ \ |_| | (__  | | \ \ (_) | (__|   <  __/ |_ ",13,10
-logo5 db " |____/ \__,_|_|_|_|___/\__|_|\___| |_|  \_\___/ \___|_|\_\___|\__|",13,10,13,10,"$"
+logo5 db " |____/ \__,_|_|_|_|___/\__|_|\___| |_|  \_\___/ \___|_|\_\___|\__|",13,10,"$"
+
+createdby db "Created by Ori Rosenwasser",13,10,"$"
 
 
 msg1 db 13,10,"Enter x velocity (00-99), (pixels per seconds): $"
@@ -23,7 +25,7 @@ minutes_passed db 0 ;if the minute has changed, add 60 seconds before subtractin
 t_sq dw 0 ; used to calculate t^2
 
 vx db ? ;x velocity
-ay db 15 ;y acceleration
+ay db 10 ;y acceleration
 v0y db ? ; initial y velocity
 color db 15
 x0 dw 10
@@ -45,17 +47,42 @@ proc get_velocity ; input: offset of a message and offset of where the entered i
     mov ah,09h
     int 21h
     
+    firstdigit:
+    mov ah,00h
+    int 16h
     
-    mov ah,01h
+    cmp al,30h    ;check if valid
+    jb firstdigit
+    
+    cmp al,39h
+    ja firstdigit
+    
+    mov dl,al   ;valid
+    mov ah,02h
     int 21h
+    
     sub al,30h
     mov bl,10
     mul bl
     mov bx,[bp + 4]
     mov [bx],al
     
-    mov ah,01h
+    seconddigit:
+    mov ah,00h
+    int 16h
+    
+    cmp al,30h    ;check if valid
+    jb seconddigit
+    
+    cmp al,39h
+    ja seconddigit
+    
+    mov dl,al   ;valid
+    mov ah,02h
     int 21h
+    
+    ;mov ah,01h
+    ;int 21h
     sub al,30h
     add [bx],al                
     
@@ -83,6 +110,7 @@ proc get_t0 ;no input, output: the currrent time in t0sec and t0min
     inc t0sec
      
     roundDown:
+    mov minutes_passed,0
     
     pop dx
     pop cx
@@ -218,7 +246,7 @@ proc update_y_coordinate ;input: delta t (seconds_passed, ms). output: sp points
 endp update_y_coordinate    
 
 
-proc draw_square
+proc draw_circle
     push ax
     push cx
     push dx
@@ -227,19 +255,36 @@ proc draw_square
     mov dx,y_coordinate
     mov al,color
     mov ah,0Ch
+    
+    dec cx
+    dec dx
+    int 10h
+    inc cx
+    int 10h
+        
+    inc cx
+    inc dx
     int 10h
     inc dx
     int 10h
-    inc cx 
+        
+    inc dx
+    dec cx
     int 10h
+    dec cx
+    int 10h
+        
+    dec cx
     dec dx
     int 10h
+    dec dx
+    int 10h  
 
     pop dx
     pop cx
     pop ax
     ret
-endp draw_square
+endp draw_circle
              
 start: 
  
@@ -248,6 +293,9 @@ mov ds, ax
 
 lea dx,logo
 mov ah,09h
+int 21h
+
+mov dx,offset createdby
 int 21h
 
 push offset msg1
@@ -262,11 +310,15 @@ mov ah,0
 mov al,13h
 int 10h ;call graphics interrupt
 
-mov x_coordinate,10
-mov y_coordinate,190
+mov cx,x0
+mov dx,y0
+
+mov x_coordinate,cx
+mov y_coordinate,dx
+mov color,15
 
 call get_t0
-call draw_square
+call draw_circle
 
 
 redraw:
@@ -276,20 +328,20 @@ call update_y_coordinate
 
 ;erase old square
 mov color,0 
-call draw_square
+call draw_circle
 
 ;draw new
 pop y_coordinate
 pop x_coordinate
 
-cmp x_coordinate,310
+cmp x_coordinate,315
 ja stopanimation   
 
-cmp y_coordinate,190
+cmp y_coordinate,195
 ja stopanimation
 
 mov color,15
-call draw_square
+call draw_circle
 jmp redraw
 
 stopanimation:
@@ -301,6 +353,11 @@ mov ah,09h
 int 21h
 
 readkey:
+mov ah,01h
+int 16h
+
+jz readkey
+
 mov ah,00
 int 16h ;wait for keypress
 
