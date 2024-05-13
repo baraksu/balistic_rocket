@@ -11,7 +11,6 @@ logo5 db " |____/ \__,_|_|_|_|___/\__|_|\___| |_|  \_\___/ \___|_|\_\___|\__|",1
 
 createdby db "Created by Ori Rosenwasser",13,10,"$"
 
-
 msg1 db 13,10,"Enter x velocity (00-99), (pixels per seconds): $"
 msg2 db 13,10,"Enter initial y velocity (00-99), (pixels per seconds): $"
 
@@ -27,12 +26,11 @@ t_sq dw 0 ; used to calculate t^2
 vx db ? ;x velocity
 ay db 10 ;y acceleration
 v0y db ? ; initial y velocity
-color db 15
-x0 dw 10
-y0 dw 190
-x_coordinate dw 10
-y_coordinate dw 190
-
+color db 15 ; the color of the rocket
+x0 dw 10 ; initial x coordinate
+y0 dw 190 ; initial y coordinate
+x_coordinate dw 10  ; current x coordinate 
+y_coordinate dw 190 ; current y coordinate
 
 .CODE
 
@@ -93,7 +91,7 @@ proc get_velocity ; input: offset of a message and offset of where the entered i
     ret
 endp get_velocity    
 
-proc get_t0 ;no input, output: the currrent time in t0sec and t0min
+proc get_t0 ;no input, output: the current time in t0sec and t0min
     push ax
     push cx
     push dx
@@ -245,8 +243,7 @@ proc update_y_coordinate ;input: delta t (seconds_passed, ms). output: sp points
     ret
 endp update_y_coordinate    
 
-
-proc draw_circle
+proc draw_circle ; input: x and y coordinates. output: draws a circle at those coordinates.
     push ax
     push cx
     push dx
@@ -361,10 +358,10 @@ jz readkey
 mov ah,00
 int 16h ;wait for keypress
 
-cmp ax,3920h
+cmp ax,3920h ;space
 je start
 
-cmp ax,011Bh
+cmp ax,011Bh  ;esc
 je exit
 
 jmp readkey 
