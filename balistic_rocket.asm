@@ -31,6 +31,9 @@ x0 dw 10 ; initial x coordinate
 y0 dw 190 ; initial y coordinate
 x_coordinate dw 10  ; current x coordinate 
 y_coordinate dw 190 ; current y coordinate
+y_value dw 0
+x_value dw 5 ;r
+decision dw ?
 
 .CODE
 
@@ -243,45 +246,135 @@ proc update_y_coordinate ;input: delta t (seconds_passed, ms). output: sp points
     ret
 endp update_y_coordinate    
 
-proc draw_circle ; input: x and y coordinates. output: draws a circle at those coordinates.
+proc draw_circle
+ 
     push ax
+    push bx
     push cx
     push dx
+    push y_value
+    push x_value 
     
-    mov cx,x_coordinate
-    mov dx,y_coordinate
-    mov al,color
-    mov ah,0Ch
+    mov bx, x_value
+    mov ax,2
+    mul bx
+    mov bx,3
+    sub bx,ax ; E=3-2r
+    mov decision,bx
     
-    dec cx
-    dec dx
+    mov al,color ;color goes in al
+    mov ah,0ch
+    
+    drawcircle:
+    mov al,color ;color goes in al
+    mov ah,0ch
+    
+    mov cx, x_value ;Octonant 1
+    add cx, x_coordinate ;( x_value + x_coordinate,  y_value + y_coordinate)
+    mov dx, y_value
+    add dx, y_coordinate
     int 10h
-    inc cx
+    
+    mov cx, x_value ;Octonant 4
+    neg cx
+    add cx, x_coordinate ;( -x_value + x_coordinate,  y_value + y_coordinate)
     int 10h
-        
-    inc cx
-    inc dx
+    ; 
+    mov cx, y_value ;Octonant 2
+    add cx, x_coordinate ;( y_value + x_coordinate,  x_value + y_coordinate)
+    mov dx, x_value
+    add dx, y_coordinate
     int 10h
-    inc dx
+    ; 
+    mov cx, y_value ;Octonant 3
+    neg cx
+    add cx, x_coordinate ;( -y_value + x_coordinate,  x_value + y_coordinate)
     int 10h
-        
-    inc dx
-    dec cx
+    
+    mov cx, x_value ;Octonant 8
+    add cx, x_coordinate ;( x_value + x_coordinate,  -y_value + y_coordinate)
+    mov dx, y_value
+    neg dx
+    add dx, y_coordinate
     int 10h
-    dec cx
+    ; 
+    mov cx, x_value ;Octonant 5
+    neg cx
+    add cx, x_coordinate ;( -x_value + x_coordinate,  -y_value + y_coordinate)
     int 10h
-        
-    dec cx
-    dec dx
+    
+    mov cx, y_value ;Octonant 7
+    add cx, x_coordinate ;( y_value + x_coordinate,  -x_value + y_coordinate)
+    mov dx, x_value
+    neg dx
+    add dx, y_coordinate
     int 10h
-    dec dx
-    int 10h  
-
+    ; 
+    mov cx, y_value ;Octonant 6
+    neg cx
+    add cx, x_coordinate ;( -y_value + x_coordinate,  -x_value + y_coordinate)
+    int 10h
+    
+    condition1:
+    cmp decision,0
+    jg condition2      
+    ;e<0
+    mov cx, y_value
+    mov ax, 2
+    imul cx ;2y
+    add ax, 3 ;ax=2y+3
+    mov bx, 2
+    mul bx  ; ax=2(2y+3)
+    add decision, ax
+    mov bx, y_value
+    mov dx, x_value
+    cmp bx, dx
+    ja readkey  
+    inc y_value
+    jmp drawcircle
+    
+    condition2:
+    ;e>0
+    mov cx, y_value 
+    mov ax,2
+    mul cx  ;cx=2y
+    mov bx,ax
+    mov cx, x_value
+    mov ax, -2
+    imul cx ;cx=-2x
+    add bx,ax
+    add bx,5;bx=5-2z+2y
+    mov ax,2
+    imul bx ;ax=2(5-2z+2y)       
+    add decision,ax
+    mov bx, y_value
+    mov dx, x_value
+    cmp bx, dx
+    ja donedrawing
+    dec x_value    
+    inc y_value
+    jmp drawcircle
+    
+    donedrawing:
+    
+    pop x_value
+    pop y_value
     pop dx
     pop cx
+    pop bx
     pop ax
     ret
 endp draw_circle
+    
+proc delay
+    pusha
+    mov cx, 03h   ;High Word
+    mov dx, 4240h ;Low Word
+    mov ah, 86h   ;Wait
+    int 15h
+    popa
+    ret
+endp delay
              
 start: 
  
@@ -316,6 +409,7 @@ mov color,15
 
 call get_t0
 call draw_circle
+;call delay
 
 
 redraw:
@@ -339,6 +433,7 @@ ja stopanimation
 
 mov color,15
 call draw_circle
+call delay
 jmp redraw
 
 stopanimation:
