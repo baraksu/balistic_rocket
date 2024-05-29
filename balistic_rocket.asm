@@ -1,4 +1,4 @@
-.MODEL small
+                                                         .MODEL small
 .STACK 100h
 .DATA    
 
@@ -15,16 +15,17 @@ msg1 db 13,10,"Enter x velocity (00-99), (pixels per seconds): $"
 msg2 db 13,10,"Enter initial y velocity (00-99), (pixels per seconds): $"
 
 msg3 db "Enter space to start again, esc to exit program.",13,10,"$"
- 
+
+t0ms db ? ; t0, milliseconds
 t0sec db ? ;t0, seconds
 t0min db ? ;t0, minutes
-seconds_passed db ? ;delta t, seconds
+seconds db ? ;delta t, seconds
 ms db ?  ;delta t, milliseconds
 minutes_passed db 0 ;if the minute has changed, add 60 seconds before subtracting t0sec
 t_sq dw 0 ; used to calculate t^2
 
 vx db ? ;x velocity
-ay db 10 ;y acceleration
+g db 5 ;gravity (gravity = 10 because if I divide it by two in 0.5at^2 it sometimes gives a divide error)
 v0y db ? ; initial y velocity
 color db 15 ; the color of the rocket
 x0 dw 10 ; initial x coordinate
@@ -104,13 +105,8 @@ proc get_t0 ;no input, output: the current time in t0sec and t0min
     
     mov t0sec,dh
     mov t0min,cl
+    mov t0ms,dl
     
-    cmp dl,50    ;in order to get the most accurate t0sec, we need to round the seconds according to the milliseconds
-    jb roundDown
-    ;round up
-    inc t0sec
-     
-    roundDown:
     mov minutes_passed,0
     
     pop dx
@@ -119,7 +115,7 @@ proc get_t0 ;no input, output: the current time in t0sec and t0min
     ret
 endp get_t0    
     
-proc get_delta_t ;input: t0 (t0sec, t0min). output: the number of seconds passed from t0 in seconds_passed and milliseconds in ms
+proc get_delta_t ;input: t0 (t0sec, t0min, t0ms). output: the number of seconds passed from t0 in seconds and milliseconds in ms
     push ax
     push cx
     push dx
@@ -128,17 +124,27 @@ proc get_delta_t ;input: t0 (t0sec, t0min). output: the number of seconds passed
     int 21h
     
     cmp cl,t0min
-    
-    je samemin
+    je same_minute
     mov minutes_passed,60
     
-    samemin: 
+    same_minute:
     
     mov al,minutes_passed
     add al,dh
     sub al,t0sec
     
-    mov seconds_passed,al
+    mov seconds,al
+    
+    ; Adjust milliseconds
+    cmp dl,t0ms
+    jnb above
+    
+    below:
+    add dl,64h  
+    dec seconds
+    
+    above:
+    sub dl,t0ms
     mov ms,dl
     
     pop dx
@@ -147,7 +153,8 @@ proc get_delta_t ;input: t0 (t0sec, t0min). output: the number of seconds passed
     ret
 endp get_delta_t
 
-proc update_x_coordinate ; input: delta t (seconds_passed, ms). output: sp points at the updated x coordinates. 
+
+proc update_x_coordinate ; input: delta t (seconds, ms). output: sp points at the updated x coordinates. 
     push dx
     push ax
     push bx
@@ -155,7 +162,7 @@ proc update_x_coordinate ; input: delta t (seconds_passed, ms). output: sp point
   
     mov dx,x0   ;x(t) = x0 + vt
     mov al,vx
-    mul seconds_passed 
+    mul seconds 
     add dx,ax
     
     xor ax,ax
@@ -183,7 +190,7 @@ proc update_x_coordinate ; input: delta t (seconds_passed, ms). output: sp point
     ret
 endp update_x_coordinate   
 
-proc update_y_coordinate ;input: delta t (seconds_passed, ms). output: sp points at the updated y coordinates.
+proc update_y_coordinate ;input: delta t (seconds, ms). output: sp points at the updated y coordinates.
     
     push dx
     push ax
@@ -196,7 +203,7 @@ proc update_y_coordinate ;input: delta t (seconds_passed, ms). output: sp points
     
     ; v0y*t
     mov al,v0y 
-    mul seconds_passed
+    mul seconds
     sub dx,ax
     
     xor ax,ax
@@ -210,12 +217,12 @@ proc update_y_coordinate ;input: delta t (seconds_passed, ms). output: sp points
     ; 0.5at^2 , t^2 = sec^2 + 2*sec*ms + ms^2
     
     ;sec^2
-    mov al,seconds_passed
+    mov al,seconds
     mul al
     mov t_sq,ax
     
     ;2*sec*ms
-    mov al,seconds_passed
+    mov al,seconds
     mul ms
     mov bl,50
     div bl
@@ -226,9 +233,7 @@ proc update_y_coordinate ;input: delta t (seconds_passed, ms). output: sp points
     
     ; 0.5at^2
     mov ax,t_sq
-    mov bl,2
-    div bl
-    mul ay
+    mul g
     add dx,ax
     
     pop bx
@@ -409,7 +414,7 @@ mov color,15
 
 call get_t0
 call draw_circle
-;call delay
+;call delg
 
 
 redraw:
@@ -439,6 +444,10 @@ jmp redraw
 stopanimation:
 mov ax,03h
 int 10h
+
+mov dl,t0ms
+mov ah,02h
+int 21h
 
 lea dx,msg3
 mov ah,09h
