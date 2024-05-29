@@ -383,6 +383,11 @@ start:
 mov ax,@DATA
 mov ds, ax
 
+mov ax,0013h ;clear screen by calling graphics mode and then back to text mode
+int 10h
+mov ax,03h
+int 10h
+
 lea dx,logo ; Print logo
 mov ah,09h
 int 21h
