@@ -370,9 +370,9 @@ endp draw_circle
     
 proc delay
     pusha
-    mov cx, 03h   ;High Word
-    mov dx, 4240h ;Low Word
-    mov ah, 86h   ;Wait
+    mov cx, 0001h   ; High Word
+    mov dx, 8680h   ; Low Word (34464 in hex)
+    mov ah, 86h     ; Wait
     int 15h
     popa
     ret
