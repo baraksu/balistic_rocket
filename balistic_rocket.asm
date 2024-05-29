@@ -45,11 +45,11 @@ proc get_velocity ; input: offset of a message and offset of where the entered i
     push bx
     push dx
     
-    mov dx, [bp + 6]
+    mov dx, [bp + 6] ; display msg
     mov ah,09h
     int 21h
     
-    firstdigit:
+    firstdigit:  ; Get the tens digit
     mov ah,00h
     int 16h
     
@@ -63,13 +63,13 @@ proc get_velocity ; input: offset of a message and offset of where the entered i
     mov ah,02h
     int 21h
     
-    sub al,30h
+    sub al,30h 
     mov bl,10
     mul bl
     mov bx,[bp + 4]
     mov [bx],al
     
-    seconddigit:
+    seconddigit: ; Get the units digit
     mov ah,00h
     int 16h
     
@@ -82,9 +82,7 @@ proc get_velocity ; input: offset of a message and offset of where the entered i
     mov dl,al   ;valid
     mov ah,02h
     int 21h
-    
-    ;mov ah,01h
-    ;int 21h
+
     sub al,30h
     add [bx],al                
     
@@ -103,7 +101,7 @@ proc get_t0 ;no input, output: the current time in t0sec and t0min
     mov ah,2Ch
     int 21h
     
-    mov t0sec,dh
+    mov t0sec,dh  ; stocking seconds, minute and ms
     mov t0min,cl
     mov t0ms,dl
     
@@ -123,20 +121,19 @@ proc get_delta_t ;input: t0 (t0sec, t0min, t0ms). output: the number of seconds 
     mov ah,2Ch
     int 21h
     
-    cmp cl,t0min
+    cmp cl,t0min  ;if the minute has changed, add 60 seconds before subtracting t0sec.
     je same_minute
     mov minutes_passed,60
     
     same_minute:
     
-    mov al,minutes_passed
+    mov al,minutes_passed ; delta t, seconds
     add al,dh
     sub al,t0sec
     
     mov seconds,al
-    
-    ; Adjust milliseconds
-    cmp dl,t0ms
+
+    cmp dl,t0ms ;delta t, ms
     jnb above
     
     below:
@@ -176,7 +173,7 @@ proc update_x_coordinate ; input: delta t (seconds, ms). output: sp points at th
     pop cx
     pop bx
     
-    mov bp,sp
+    mov bp,sp   ; stock the new coordinate in the stack
     mov ax,[bp + 4]
     mov [bp + 4],dx
     
@@ -231,14 +228,14 @@ proc update_y_coordinate ;input: delta t (seconds, ms). output: sp points at the
     
     ;ms^2 will be less than 1 anyway so it is pointless 
     
-    ; 0.5at^2
+    ; 0.5at^2, if I did divide this by 2, it sometimes would give me an error.
     mov ax,t_sq
     mul g
     add dx,ax
     
     pop bx
     
-    mov bp,sp
+    mov bp,sp  ; stock the new coordinate in the stack
     mov ax,[bp + 4]
     mov [bp + 4],dx
     
@@ -251,7 +248,7 @@ proc update_y_coordinate ;input: delta t (seconds, ms). output: sp points at the
     ret
 endp update_y_coordinate    
 
-proc draw_circle
+proc draw_circle ; intput: x_coordinate, y_coordinate, output: a circle at (x_coordinate, y_coordinate).
  
     push ax
     push bx
@@ -386,18 +383,18 @@ start:
 mov ax,@DATA
 mov ds, ax
 
-lea dx,logo
+lea dx,logo ; Print logo
 mov ah,09h
 int 21h
 
 mov dx,offset createdby
 int 21h
 
-push offset msg1
+push offset msg1 ; Get x velocity
 push offset vx
 call get_velocity
 
-push offset msg2
+push offset msg2 ;Get y velocity
 push offset v0y
 call get_velocity
 
@@ -405,29 +402,27 @@ mov ah,0
 mov al,13h
 int 10h ;call graphics interrupt
 
-mov cx,x0
+mov cx,x0 ; initialize location
 mov dx,y0
 
-mov x_coordinate,cx
+mov x_coordinate,cx ; draw first circle at (x0, y0)
 mov y_coordinate,dx
 mov color,15
 
 call get_t0
 call draw_circle
-;call delg
+call delay
 
 
 redraw:
-call get_delta_t
+call get_delta_t        ; Get the new coordinates and storing them in the stack
 call update_x_coordinate
 call update_y_coordinate
 
-;erase old square
-mov color,0 
+mov color,0  ;erase old circle
 call draw_circle
 
-;draw new
-pop y_coordinate
+pop y_coordinate   ; Check if circle went out of screen
 pop x_coordinate
 
 cmp x_coordinate,315
@@ -436,31 +431,27 @@ ja stopanimation
 cmp y_coordinate,195
 ja stopanimation
 
-mov color,15
+mov color,15    ; draw new circle
 call draw_circle
 call delay
-jmp redraw
+jmp redraw ; draw next circle
 
 stopanimation:
 mov ax,03h
 int 10h
 
-mov dl,t0ms
-mov ah,02h
-int 21h
-
-lea dx,msg3
+lea dx,msg3 ; "Enter space to start again, esc to exit program."
 mov ah,09h
 int 21h
 
 readkey:
-mov ah,01h
+mov ah,01h ;wait for keypress
 int 16h
 
 jz readkey
 
 mov ah,00
-int 16h ;wait for keypress
+int 16h 
 
 cmp ax,3920h ;space
 je start
@@ -468,7 +459,7 @@ je start
 cmp ax,011Bh  ;esc
 je exit
 
-jmp readkey 
+jmp readkey ; if not space or esc, jump to readkey
  
 ;==========================
 exit:
